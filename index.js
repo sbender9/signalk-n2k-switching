@@ -61,7 +61,7 @@ module.exports = function (app) {
     }
 
     pgn[`Switch${switchNum}`] = value === 1 || value === 'on' ? 'On' : 'Off'
-    console.log(JSON.stringify(pgn))
+    //console.log(JSON.stringify(pgn))
     app.emit('nmea2000JsonOut', pgn)
     //app.emit('nmea2000out', '2019-04-03T23:40:51.859Z,3,127502,0,169,8,00,10,ff,ff,ff,ff,ff,ff')
     
