@@ -34,25 +34,28 @@ module.exports = function (app) {
     }
   }
 
-  function handleMessage (delta) {
-    app.handleMessage(PLUGIN_ID, delta)
-  }
-
-  function setValueCallback (msg) {
-    //dbusSetValue(msg.destination, msg.path, msg.value)
-  }
-
   function actionHandler(context, path, value, cb) {
     app.debug(`setting ${path} to ${value}`)
 
     const parts = path.split('.')
-    const instance = Number(parts[3])
-    const switchNum = Number(parts[4])
+    let instance = Number(parts[3])
+    let switchNum = Number(parts[4])
 
-    const source = app.getSelfPath(path)
+    const bankMeta = app.getSelfPath(parts.slice(0, 4).join('.') + '.meta')
+    const switchMeta = app.getSelfPath(parts.slice(0, 5).join('.') + '.meta')
+
+    if ( bankMeta && !_.isUndefined(bankMeta.instanceNumber) ) {
+      instance = bankMeta.instanceNumber
+    }
+
+    if ( switchMeta && !_.isUndefined(switchMeta.instanceNumber) ) {
+      switchNum = switchMeta.instanceNumber
+    }
+
+    //const source = app.getSelfPath(path)
     const dst = 255 //169 //source['$source']
     
-    app.debug(JSON.stringify(source))
+    //app.debug(JSON.stringify(source))
 
     const pgn = {
       pgn: 127502,
@@ -62,6 +65,7 @@ module.exports = function (app) {
 
     pgn[`Switch${switchNum}`] = value === 1 || value === 'on' ? 'On' : 'Off'
     //console.log(JSON.stringify(pgn))
+    app.debug('sending %j', pgn)
     app.emit('nmea2000JsonOut', pgn)
     //app.emit('nmea2000out', '2019-04-03T23:40:51.859Z,3,127502,0,169,8,00,10,ff,ff,ff,ff,ff,ff')
     
