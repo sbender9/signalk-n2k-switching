@@ -3,10 +3,9 @@
   "version": "1.0.0",
   "description": "SignalK Plugin for N2K Switching",
   "main": "index.js",
-  "dependencies": {
-  },
+  "dependencies": {},
   "devDependencies": {
-    "github-changes": "^1.0.4",
+    "github-changes": "^1.0.4"
   },
   "scripts": {
     "test": "mocha",
