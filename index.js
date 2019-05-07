@@ -68,16 +68,21 @@ module.exports = function (app) {
     app.debug('sending %j', pgn)
     app.emit('nmea2000JsonOut', pgn)
     //app.emit('nmea2000out', '2019-04-03T23:40:51.859Z,3,127502,0,169,8,00,10,ff,ff,ff,ff,ff,ff')
-    
-    setTimeout(() => {
+
+    let retryCount = 0
+    let interval = setInterval(() => {
       var val = app.getSelfPath(path)
       if ( val && val.value == value ) {
         cb({ state: 'SUCCESS' })
+        clearInterval(interval)
       } else {
-        cb({
-          state: 'FAILURE',
-          message: 'Did not receive change confirmation'
-        })
+        if ( retryCount++ > 5 ) {
+          cb({
+            state: 'FAILURE',
+            message: 'Did not receive change confirmation'
+          })
+          clearInterval(interval)
+        }
       }
     }, 1000)
     
