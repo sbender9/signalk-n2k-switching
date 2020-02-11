@@ -22,6 +22,7 @@ module.exports = function (app) {
   const plugin = {}
   let onStop = []
   let registeredPaths = []
+  let pluginOptions 
 
   plugin.id = PLUGIN_ID
   plugin.name = PLUGIN_NAME
@@ -31,6 +32,11 @@ module.exports = function (app) {
     title: PLUGIN_NAME,
     type: 'object',
     properties: {
+      maretronCompatibility: {
+	type: 'boolean',
+	title: 'Maretron Compatibility (Sends command PGN 126208 to update switch status PGN 127501 in addition to the standard switch control PGN 127502)',
+	default: false
+      }
     }
   }
 
@@ -52,9 +58,9 @@ module.exports = function (app) {
       switchNum = switchMeta.instanceNumber
     }
 
-    //const source = app.getSelfPath(path)
-    const dst = 255 //169 //source['$source']
-    
+    const source = app.getSelfPath(path)
+    dst = 255 //broadcast is fine for 127502
+
     //app.debug(JSON.stringify(source))
 
     const pgn = {
@@ -69,10 +75,49 @@ module.exports = function (app) {
     app.emit('nmea2000JsonOut', pgn)
     //app.emit('nmea2000out', '2019-04-03T23:40:51.859Z,3,127502,0,169,8,00,10,ff,ff,ff,ff,ff,ff')
 
+
+    //maretron switch control uses pgn 126208 command to toggle the state via 127501
+    if(pluginOptions.maretronCompatibility  === true){
+
+      //the command must be sent to the device, it cannot be sent to the broadcast
+      dst = parseInt(source['$source'].split(".")[1])
+
+      //the command parameter for the switch number is shifted by one due to the first parameter being the instance
+      switchNum++
+
+      const commandPgn = {
+        "pgn":126208,
+        "dst": dst,
+        "prio":3,
+        "fields":{
+          "Function Code":"Command",
+          "PGN":127501,
+          "Priority":8,
+          "# of Parameters":2,
+          "list":[
+            {
+               "Parameter":1,
+               "Value": instance
+            },
+            {
+               "Parameter": switchNum,
+               "Value": value
+            }
+          ]
+        }
+      }
+
+      setTimeout(function(){
+        app.debug('sending command %j', commandPgn)
+        app.emit('nmea2000JsonOut', commandPgn)
+      }, 1000)
+    }
+
     let retryCount = 0
     let interval = setInterval(() => {
       var val = app.getSelfPath(path)
       if ( val && val.value == value ) {
+	app.debug("SUCCESS")
         cb({ state: 'SUCCESS' })
         clearInterval(interval)
       } else {
@@ -85,7 +130,7 @@ module.exports = function (app) {
         }
       }
     }, 1000)
-    
+
     return { state: 'PENDING' }
   }
 
@@ -98,6 +143,8 @@ module.exports = function (app) {
     or the plugin is enabled from ui on a running server).
   */
   plugin.start = function (options) {
+    pluginOptions = options
+
     let command = {
       context: "vessels.self",
       subscribe: [{
@@ -107,7 +154,7 @@ module.exports = function (app) {
     }
 
     app.debug('subscribe %j', command)
-    
+
     app.subscriptionmanager.subscribe(command, onStop, subscription_error, delta => {
       delta.updates.forEach(update => {
         update.values.forEach(value => {
@@ -135,4 +182,3 @@ module.exports = function (app) {
 
   return plugin
 }
-
