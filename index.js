@@ -22,6 +22,7 @@ module.exports = function (app) {
   const plugin = {}
   let onStop = []
   let registeredPaths = []
+  let pluginOptions 
 
   plugin.id = PLUGIN_ID
   plugin.name = PLUGIN_NAME
@@ -142,7 +143,7 @@ module.exports = function (app) {
     or the plugin is enabled from ui on a running server).
   */
   plugin.start = function (options) {
-    pluginOptions = options 
+    pluginOptions = options
 
     let command = {
       context: "vessels.self",
