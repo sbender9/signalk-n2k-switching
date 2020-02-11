@@ -42,7 +42,6 @@ module.exports = function (app) {
   function actionHandler(context, path, value, cb) {
     app.debug(`setting ${path} to ${value}`)
 
-    const options = app.readPluginOptions()
     const parts = path.split('.')
     let instance = Number(parts[3])
     let switchNum = Number(parts[4])
@@ -77,7 +76,7 @@ module.exports = function (app) {
 
 
     //maretron switch control uses pgn 126208 command to toggle the state via 127501
-    if(options.configuration.maretronCompatibility  === true){
+    if(pluginOptions.maretronCompatibility  === true){
 
       //the command must be sent to the device, it cannot be sent to the broadcast
       dst = parseInt(source['$source'].split(".")[1])
@@ -143,6 +142,8 @@ module.exports = function (app) {
     or the plugin is enabled from ui on a running server).
   */
   plugin.start = function (options) {
+    pluginOptions = options 
+
     let command = {
       context: "vessels.self",
       subscribe: [{
