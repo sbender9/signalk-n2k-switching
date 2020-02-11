@@ -1,6 +1,6 @@
 {
   "name": "signalk-n2k-switching",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "description": "SignalK Plugin for N2K Switching",
   "main": "index.js",
   "dependencies": {
