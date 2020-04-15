@@ -40,7 +40,7 @@ module.exports = function (app) {
     }
   }
 
-  function actionHandler(context, path, value, cb) {
+  function actionHandler(context, path, dSource, value, cb) {
     app.debug(`setting ${path} to ${value}`)
 
     const parts = path.split('.')
@@ -116,7 +116,10 @@ module.exports = function (app) {
     let retryCount = 0
     let interval = setInterval(() => {
       var val = app.getSelfPath(path)
-      if ( val && val.value == value ) {
+      if ( val ) {
+        val = val.values ? val.values[dSource] : val.value
+      }
+      if ( !_.isUndefined(val) && val == value ) {
 	app.debug("SUCCESS")
         cb({ state: 'SUCCESS' })
         clearInterval(interval)
@@ -164,7 +167,9 @@ module.exports = function (app) {
             app.debug('register action handler for path %s source %s', path, update.$source)
             app.registerActionHandler('vessels.self',
                                       path,
-                                      actionHandler,
+                                      (context, path, value, cb) => {
+                                        return actionHandler(context, path, update.$source, value, cb)
+                                      },
                                       update.$source)
             registeredPaths.push(key)
           }
