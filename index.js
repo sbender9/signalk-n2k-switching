@@ -159,12 +159,14 @@ module.exports = function (app) {
       delta.updates.forEach(update => {
         update.values.forEach(value => {
           const path = value.path
-          if ( path.endsWith('state') && registeredPaths.indexOf(path) === -1 ) {
-            app.debug('register action handler for path %s', path)
+          const key = `${path}.${update.$source}`
+          if ( path.endsWith('state') && registeredPaths.indexOf(key) === -1 ) {
+            app.debug('register action handler for path %s source %s', path, update.$source)
             app.registerActionHandler('vessels.self',
                                       path,
-                                      actionHandler)
-            registeredPaths.push(path)
+                                      actionHandler,
+                                      update.$source)
+            registeredPaths.push(key)
           }
         })
       })
