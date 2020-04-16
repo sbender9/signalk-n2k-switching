@@ -117,7 +117,7 @@ module.exports = function (app) {
     let interval = setInterval(() => {
       var val = app.getSelfPath(path)
       if ( val ) {
-        val = val.values ? val.values[dSource] : val.value
+        val = val.values ? val.values[dSource].value : val.value
       }
       if ( !_.isUndefined(val) && val == value ) {
 	app.debug("SUCCESS")
