@@ -69,7 +69,7 @@ module.exports = function (app) {
       "Switch Bank Instance": instance
     }
 
-    pgn[`Switch${switchNum}`] = value === 1 || value === 'on' ? 'On' : 'Off'
+    pgn[`Switch${switchNum}`] = value === 1 || value === 'on' || value === true  ? 'On' : 'Off'
     //console.log(JSON.stringify(pgn))
     app.debug('sending %j', pgn)
     app.emit('nmea2000JsonOut', pgn)
