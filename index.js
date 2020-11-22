@@ -160,20 +160,22 @@ module.exports = function (app) {
 
     app.subscriptionmanager.subscribe(command, onStop, subscription_error, delta => {
       delta.updates.forEach(update => {
-        update.values.forEach(value => {
-          const path = value.path
-          const key = `${path}.${update.$source}`
-          if ( path.endsWith('state') && registeredPaths.indexOf(key) === -1 ) {
-            app.debug('register action handler for path %s source %s', path, update.$source)
-            app.registerActionHandler('vessels.self',
-                                      path,
-                                      (context, path, value, cb) => {
-                                        return actionHandler(context, path, update.$source, value, cb)
-                                      },
-                                      update.$source)
-            registeredPaths.push(key)
-          }
-        })
+        if ( update.values ) {
+          update.values.forEach(value => {
+            const path = value.path
+            const key = `${path}.${update.$source}`
+            if ( path.endsWith('state') && registeredPaths.indexOf(key) === -1 ) {
+              app.debug('register action handler for path %s source %s', path, update.$source)
+              app.registerActionHandler('vessels.self',
+                                        path,
+                                        (context, path, value, cb) => {
+                                          return actionHandler(context, path, update.$source, value, cb)
+                                        },
+                                        update.$source)
+              registeredPaths.push(key)
+            }
+          })
+        }
       })
     })
   }
