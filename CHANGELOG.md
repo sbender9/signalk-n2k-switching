@@ -1,5 +1,8 @@
 ## Change Log
 
+### v1.1.6 (2020/11/29 21:20 +00:00)
+- [#4](https://github.com/sbender9/signalk-n2k-switching/pull/4) fix: use new getMetadata plugin api (@sbender9)
+
 ### v1.1.5 (2020/11/22 15:45 +00:00)
 - [#3](https://github.com/sbender9/signalk-n2k-switching/pull/3) fix: error when receiving meta deltas (@sbender9)
 
