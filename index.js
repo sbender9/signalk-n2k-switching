@@ -47,8 +47,16 @@ module.exports = function (app) {
     let instance = Number(parts[3])
     let switchNum = Number(parts[4])
 
-    const bankMeta = app.getSelfPath(parts.slice(0, 4).join('.') + '.meta')
-    const switchMeta = app.getSelfPath(parts.slice(0, 5).join('.') + '.meta')
+    let bankMeta
+    let switchMeta
+
+    if ( app.getMetadata ) {
+      bankMeta = app.getMetadata(`vessels.self.${parts.slice(0, 4).join('.')}`)
+      switchMeta = app.getMetadata(`vessels.self.${parts.slice(0, 5).join('.')}`)
+    } else {
+      bankMeta = app.getSelfPath(parts.slice(0, 4).join('.') + '.meta')
+      switchMeta = app.getSelfPath(parts.slice(0, 5).join('.') + '.meta')
+    }
 
     if ( bankMeta && !_.isUndefined(bankMeta.instanceNumber) ) {
       instance = bankMeta.instanceNumber
