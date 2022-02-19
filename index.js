@@ -74,7 +74,8 @@ module.exports = function (app) {
     const pgn = {
       pgn: 127502,
       dst: dst,
-      "Switch Bank Instance": instance
+      "Switch Bank Instance": instance,
+      "Instance": instance
     }
 
     pgn[`Switch${switchNum}`] = value === 1 || value === 'on' || value === true  ? 'On' : 'Off'
