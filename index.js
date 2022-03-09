@@ -78,7 +78,8 @@ module.exports = function (app) {
       "Instance": instance
     }
 
-    const new_value = value === 1 || value === 'on' || value === true  ? 'On' : 'Off'
+    const new_int = value === 1 || value === 'on' || value === true ? 1 : 0
+    const new_value = new_int === 1  ? 'On' : 'Off'
     pgn[`Switch${switchNum}`] = new_value
     //console.log(JSON.stringify(pgn))
     app.debug('sending %j', pgn)
@@ -131,11 +132,11 @@ module.exports = function (app) {
     let retryCount = 0
     let interval = setInterval(() => {
       var val = app.getSelfPath(path)
+      app.debug('checking %s %j should be %j', path, val, new_int)
       if ( val ) {
         val = val.values ? val.values[dSource].value : val.value
       }
-      app.debug('checking %s == %j', path, val)
-      if ( !_.isUndefined(val) && val == new_value ) {
+      if ( !_.isUndefined(val) && val == new_int ) {
 	app.debug("SUCCESS")
         cb({ state: 'SUCCESS' })
         clearInterval(interval)
