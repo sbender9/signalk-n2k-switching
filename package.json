@@ -7,12 +7,12 @@
     "lodash": "^4.17.11"
   },
   "devDependencies": {
-    "github-changes": "^1.0.4"
+    "@signalk/github-create-release": "^1.2.1"
   },
   "scripts": {
     "test": "mocha",
-    "changelog": "github-changes -o sbender9 -r signalk-n2k-switching -a --only-pulls --use-commit-body --data=pulls  --tag-name=v$npm_package_version",
-    "release": "git tag -d v$npm_package_version ; npm run changelog && git add CHANGELOG.md && git commit -m 'chore: update changelog' && git tag v$npm_package_version && git push --tags && git push"
+    "create-release": "github-create-release --owner sbender9 --repository signalk-n2k-switching",
+    "release": "git tag -d v$npm_package_version ; git tag v$npm_package_version && git push --tags && git push && npm run create-release"
   },
   "keywords": [
     "signalk-node-server-plugin"
