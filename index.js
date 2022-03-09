@@ -89,7 +89,12 @@ module.exports = function (app) {
     if(pluginOptions.maretronCompatibility  === true){
 
       //the command must be sent to the device, it cannot be sent to the broadcast
-      dst = parseInt(source['$source'].split(".")[1])
+      if (_.isUndefined(source)) {
+        const parts = dSource.split(".")
+        dst = parseInt(parts[parts.length - 1])
+      } else {
+        dst = parseInt(source['$source'].split(".")[1])
+      }
 
       //the command parameter for the switch number is shifted by one due to the first parameter being the instance
       switchNum++
