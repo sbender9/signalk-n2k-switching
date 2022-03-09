@@ -78,7 +78,8 @@ module.exports = function (app) {
       "Instance": instance
     }
 
-    pgn[`Switch${switchNum}`] = value === 1 || value === 'on' || value === true  ? 'On' : 'Off'
+    const new_value = value === 1 || value === 'on' || value === true  ? 'On' : 'Off'
+    pgn[`Switch${switchNum}`] = new_value
     //console.log(JSON.stringify(pgn))
     app.debug('sending %j', pgn)
     app.emit('nmea2000JsonOut', pgn)
@@ -115,7 +116,7 @@ module.exports = function (app) {
             },
             {
                "Parameter": switchNum,
-               "Value": value
+               "Value": new_value
             }
           ]
         }
@@ -133,7 +134,8 @@ module.exports = function (app) {
       if ( val ) {
         val = val.values ? val.values[dSource].value : val.value
       }
-      if ( !_.isUndefined(val) && val == value ) {
+      app.debug('checking %s == %j', path, val)
+      if ( !_.isUndefined(val) && val == new_value ) {
 	app.debug("SUCCESS")
         cb({ state: 'SUCCESS' })
         clearInterval(interval)
