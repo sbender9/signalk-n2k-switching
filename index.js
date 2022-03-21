@@ -92,10 +92,12 @@ module.exports = function (app) {
 
       //the command must be sent to the device, it cannot be sent to the broadcast
       if (_.isUndefined(source)) {
+        app.debug("%s is undefined, either we didn't ever got a value or getSelfPath isn't working because vessel uuid/mmsi is missing", path)
         const parts = dSource.split(".")
         dst = parseInt(parts[parts.length - 1])
       } else {
-        dst = parseInt(source['$source'].split(".")[1])
+        const parts = source['$source'].split(".")
+        dst = parseInt(parts[parts.length - 1])
       }
 
       //the command parameter for the switch number is shifted by one due to the first parameter being the instance
