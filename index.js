@@ -206,6 +206,7 @@ module.exports = function (app) {
     app.debug('stop')
     onStop.forEach(f => f())
     onStop = []
+    registeredPaths = []
   }
 
   return plugin
