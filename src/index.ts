@@ -82,10 +82,13 @@ module.exports = function (app: any) {
 
     const source = app.getSelfPath(path)
 
-    const pgn = convertCamelCase(app, new PGN_127502({
-      instance
-    }))
-    
+    const pgn = convertCamelCase(
+      app,
+      new PGN_127502({
+        instance
+      })
+    )
+
     const new_int = value === 1 || value === 'on' || value === true ? 1 : 0
     const new_value = new_int === 1 ? 'On' : 'Off'
 
@@ -114,24 +117,27 @@ module.exports = function (app: any) {
       //the command parameter for the switch number is shifted by one due to the first parameter being the instance
       switchNum++
 
-      const commandPgn = convertCamelCase(app, new PGN_126208_NmeaCommandGroupFunction(
-        {
-          pgn: 127501,
-          priority: 8,
-          numberOfParameters: 2,
-          list: [
-            {
-              parameter: 1,
-              value: instance
-            },
-            {
-              parameter: switchNum,
-              value: new_value
-            }
-          ]
-        },
-        dst
-      ))
+      const commandPgn = convertCamelCase(
+        app,
+        new PGN_126208_NmeaCommandGroupFunction(
+          {
+            pgn: 127501,
+            priority: 8,
+            numberOfParameters: 2,
+            list: [
+              {
+                parameter: 1,
+                value: instance
+              },
+              {
+                parameter: switchNum,
+                value: new_value
+              }
+            ]
+          },
+          dst
+        )
+      )
 
       setTimeout(function () {
         app.debug('sending command %j', commandPgn)
