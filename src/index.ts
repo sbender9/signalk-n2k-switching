@@ -17,9 +17,8 @@
 import {
   PGN_127502,
   PGN_126208_NmeaCommandGroupFunction,
-  mapCamelCaseKeys
+  convertCamelCase
 } from '@canboat/ts-pgns'
-import { satisfies } from 'semver'
 
 const PLUGIN_ID = 'signalk-n2k-switching'
 const PLUGIN_NAME = 'NMEA2000 Switching'
@@ -33,8 +32,6 @@ module.exports = function (app: any) {
   plugin.id = PLUGIN_ID
   plugin.name = PLUGIN_NAME
   plugin.description = 'SignalK Plugin to enable N2K Switching'
-
-  const needsCamelMapping = !satisfies(app.config.version, '>=2.15.0')
 
   plugin.schema = {
     title: PLUGIN_NAME,
@@ -85,20 +82,18 @@ module.exports = function (app: any) {
 
     const source = app.getSelfPath(path)
 
-    const pgn = new PGN_127502({
+    const pgn = convertCamelCase(app, new PGN_127502({
       instance
-    })
-
+    }))
+    
     const new_int = value === 1 || value === 'on' || value === true ? 1 : 0
     const new_value = new_int === 1 ? 'On' : 'Off'
 
     const pa: any = pgn as any
     pa.fields[`switch${switchNum}`] = new_value
 
-    const converted = needsCamelMapping ? mapCamelCaseKeys(pgn) : pgn
-
-    app.debug('sending %j', converted)
-    app.emit('nmea2000JsonOut', converted)
+    app.debug('sending %j', pgn)
+    app.emit('nmea2000JsonOut', pgn)
 
     //maretron switch control uses pgn 126208 command to toggle the state via 127501
     if (pluginOptions.maretronCompatibility === true) {
@@ -119,7 +114,7 @@ module.exports = function (app: any) {
       //the command parameter for the switch number is shifted by one due to the first parameter being the instance
       switchNum++
 
-      const commandPgn = new PGN_126208_NmeaCommandGroupFunction(
+      const commandPgn = convertCamelCase(app, new PGN_126208_NmeaCommandGroupFunction(
         {
           pgn: 127501,
           priority: 8,
@@ -136,14 +131,11 @@ module.exports = function (app: any) {
           ]
         },
         dst
-      )
+      ))
 
       setTimeout(function () {
-        const converted = needsCamelMapping
-          ? mapCamelCaseKeys(commandPgn)
-          : commandPgn
-        app.debug('sending command %j', converted)
-        app.emit('nmea2000JsonOut', converted)
+        app.debug('sending command %j', commandPgn)
+        app.emit('nmea2000JsonOut', commandPgn)
       }, 1000)
     }
 
