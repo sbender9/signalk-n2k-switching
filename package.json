@@ -2,17 +2,33 @@
   "name": "signalk-n2k-switching",
   "version": "1.1.10",
   "description": "SignalK Plugin for N2K Switching",
-  "main": "index.js",
+  "main": "dist/index.js",
   "dependencies": {
+    "@canboat/ts-pgns": "^1.7.1",
     "lodash": "^4.17.11"
   },
   "devDependencies": {
-    "@signalk/github-create-release": "^1.2.1"
+    "@signalk/github-create-release": "^1.2.1",
+    "@tsconfig/node20": "^20.1.6",
+    "eslint": "^9.30.1",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-prettier": "^5.5.1",
+    "prettier-standard": "^16.4.1",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.36.0"
   },
   "scripts": {
     "test": "mocha",
     "create-release": "github-create-release --owner sbender9 --repository signalk-n2k-switching",
-    "release": "git tag -d v$npm_package_version ; git tag v$npm_package_version && git push --tags && git push && npm run create-release"
+    "release": "git tag -d v$npm_package_version ; git tag v$npm_package_version && git push --tags && git push && npm run create-release",
+    "lint": "eslint --fix",
+    "prettier": "prettier --write ./src/*",
+    "ci-lint": "eslint && prettier --check ./src/*",
+    "ci-test": "npm run build && npm run ci-lint",
+    "format": "npm run prettier && npm run lint",
+    "build": "tsc -b --pretty false",
+    "watch": "tsc --watch --pretty false",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "signalk-node-server-plugin"
