@@ -49,10 +49,18 @@ module.exports = function (app: any) {
   function actionHandler(
     context: string,
     path: string,
-    dSource: string,
+    dSource: string | undefined,
     value: any,
     cb: (res: any) => void
   ) {
+    if (!dSource) {
+      const current = app.getSelfPath(path)
+      if (current && current.$source) {
+        dSource = current.$source
+        app.debug('resolved source from current data: %s', dSource)
+      }
+    }
+
     app.debug(`setting ${path} to ${value}`)
 
     const parts = path.split('.')
@@ -101,48 +109,55 @@ module.exports = function (app: any) {
     //maretron switch control uses pgn 126208 command to toggle the state via 127501
     if (pluginOptions.maretronCompatibility === true) {
       //the command must be sent to the device, it cannot be sent to the broadcast
-      let dst: number
-      if (source === undefined) {
+      let dst: number | undefined
+      if (source === undefined && dSource) {
         app.debug(
           "%s is undefined, either we didn't ever got a value or getSelfPath isn't working because vessel uuid/mmsi is missing",
           path
         )
         const parts = dSource.split('.')
         dst = parseInt(parts[parts.length - 1])
+      } else if (source === undefined) {
+        app.debug(
+          'skipping Maretron command: %s has no current value or source to determine destination',
+          path
+        )
       } else {
         const parts = source['$source'].split('.')
         dst = parseInt(parts[parts.length - 1])
       }
 
-      //the command parameter for the switch number is shifted by one due to the first parameter being the instance
-      switchNum++
+      if (dst !== undefined) {
+        //the command parameter for the switch number is shifted by one due to the first parameter being the instance
+        switchNum++
 
-      const commandPgn = convertCamelCase(
-        app,
-        new PGN_126208_NmeaCommandGroupFunction(
-          {
-            pgn: 127501,
-            priority: 8,
-            numberOfParameters: 2,
-            list: [
-              {
-                parameter: 1,
-                value: instance
-              },
-              {
-                parameter: switchNum,
-                value: new_value
-              }
-            ]
-          },
-          dst
+        const commandPgn = convertCamelCase(
+          app,
+          new PGN_126208_NmeaCommandGroupFunction(
+            {
+              pgn: 127501,
+              priority: 8,
+              numberOfParameters: 2,
+              list: [
+                {
+                  parameter: 1,
+                  value: instance
+                },
+                {
+                  parameter: switchNum,
+                  value: new_value
+                }
+              ]
+            },
+            dst
+          )
         )
-      )
 
-      setTimeout(function () {
-        app.debug('sending command %j', commandPgn)
-        app.emit('nmea2000JsonOut', commandPgn)
-      }, 1000)
+        setTimeout(function () {
+          app.debug('sending command %j', commandPgn)
+          app.emit('nmea2000JsonOut', commandPgn)
+        }, 1000)
+      }
     }
 
     let retryCount = 0
@@ -150,7 +165,7 @@ module.exports = function (app: any) {
       let val = app.getSelfPath(path)
       app.debug('checking %s %j should be %j', path, val, new_int)
       if (val) {
-        val = val.values ? val.values[dSource].value : val.value
+        val = val.values && dSource ? val.values[dSource]?.value : val.value
       }
       if (val !== undefined && val == new_int) {
         app.debug('SUCCESS')
