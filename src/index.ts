@@ -29,6 +29,10 @@ module.exports = function (app: any) {
   let registeredPaths: string[] = []
   let pluginOptions: any
 
+  // Waiters for PGN 126208 Acknowledge responses from Maretron-style switch
+  // banks, keyed by device source address (dst of the original command).
+  const pendingAcks = new Map<number, Array<() => void>>()
+
   plugin.id = PLUGIN_ID
   plugin.name = PLUGIN_NAME
   plugin.description = 'SignalK Plugin to enable N2K Switching'
@@ -49,10 +53,18 @@ module.exports = function (app: any) {
   function actionHandler(
     context: string,
     path: string,
-    dSource: string,
+    dSource: string | undefined,
     value: any,
     cb: (res: any) => void
   ) {
+    if (!dSource) {
+      const current = app.getSelfPath(path)
+      if (current && current.$source) {
+        dSource = current.$source
+        app.debug('resolved source from current data: %s', dSource)
+      }
+    }
+
     app.debug(`setting ${path} to ${value}`)
 
     const parts = path.split('.')
@@ -99,50 +111,90 @@ module.exports = function (app: any) {
     app.emit('nmea2000JsonOut', pgn)
 
     //maretron switch control uses pgn 126208 command to toggle the state via 127501
+    let dst: number | undefined
     if (pluginOptions.maretronCompatibility === true) {
       //the command must be sent to the device, it cannot be sent to the broadcast
-      let dst: number
-      if (source === undefined) {
+      if (source === undefined && dSource) {
         app.debug(
           "%s is undefined, either we didn't ever got a value or getSelfPath isn't working because vessel uuid/mmsi is missing",
           path
         )
         const parts = dSource.split('.')
         dst = parseInt(parts[parts.length - 1])
+      } else if (source === undefined) {
+        app.debug(
+          'skipping Maretron command: %s has no current value or source to determine destination',
+          path
+        )
       } else {
         const parts = source['$source'].split('.')
         dst = parseInt(parts[parts.length - 1])
       }
 
-      //the command parameter for the switch number is shifted by one due to the first parameter being the instance
-      switchNum++
+      if (dst !== undefined) {
+        //the command parameter for the switch number is shifted by one due to the first parameter being the instance
+        switchNum++
 
-      const commandPgn = convertCamelCase(
-        app,
-        new PGN_126208_NmeaCommandGroupFunction(
-          {
-            pgn: 127501,
-            priority: 8,
-            numberOfParameters: 2,
-            list: [
-              {
-                parameter: 1,
-                value: instance
-              },
-              {
-                parameter: switchNum,
-                value: new_value
-              }
-            ]
-          },
-          dst
+        const commandPgn = convertCamelCase(
+          app,
+          new PGN_126208_NmeaCommandGroupFunction(
+            {
+              pgn: 127501,
+              priority: 8,
+              numberOfParameters: 2,
+              list: [
+                {
+                  parameter: 1,
+                  value: instance
+                },
+                {
+                  parameter: switchNum,
+                  value: new_value
+                }
+              ]
+            },
+            dst
+          )
         )
-      )
 
-      setTimeout(function () {
-        app.debug('sending command %j', commandPgn)
-        app.emit('nmea2000JsonOut', commandPgn)
-      }, 1000)
+        setTimeout(function () {
+          app.debug('sending command %j', commandPgn)
+          app.emit('nmea2000JsonOut', commandPgn)
+        }, 1000)
+      }
+    }
+
+    // Some switch banks (e.g. Maretron) broadcast PGN 127501 periodically
+    // rather than on-change, so state confirmation by polling can take
+    // 15-30s. Wait up to ~20s before giving up.
+    let settled = false
+    let ackWaiter: (() => void) | undefined
+    const settle = (reply: any) => {
+      if (settled) return
+      settled = true
+      clearInterval(interval)
+      if (ackWaiter !== undefined && dst !== undefined) {
+        const cur = pendingAcks.get(dst)
+        if (cur) {
+          const i = cur.indexOf(ackWaiter)
+          if (i >= 0) cur.splice(i, 1)
+          if (cur.length === 0) pendingAcks.delete(dst)
+        }
+      }
+      cb(reply)
+    }
+
+    // When Maretron compatibility is on, the device acknowledges our 126208
+    // command PGN within ~500ms via an Acknowledge group function. Short
+    // circuit to SUCCESS as soon as that ACK arrives.
+    if (pluginOptions.maretronCompatibility === true && dst !== undefined) {
+      ackWaiter = () => {
+        app.debug('SUCCESS (126208 ACK)')
+        settle({ state: 'SUCCESS' })
+      }
+      const waiters = pendingAcks.get(dst) ?? []
+      waiters.push(ackWaiter)
+      pendingAcks.set(dst, waiters)
     }
 
     let retryCount = 0
@@ -150,20 +202,16 @@ module.exports = function (app: any) {
       let val = app.getSelfPath(path)
       app.debug('checking %s %j should be %j', path, val, new_int)
       if (val) {
-        val = val.values ? val.values[dSource].value : val.value
+        val = val.values && dSource ? val.values[dSource]?.value : val.value
       }
       if (val !== undefined && val == new_int) {
         app.debug('SUCCESS')
-        cb({ state: 'SUCCESS' })
-        clearInterval(interval)
-      } else {
-        if (retryCount++ > 5) {
-          cb({
-            state: 'FAILURE',
-            message: 'Did not receive change confirmation'
-          })
-          clearInterval(interval)
-        }
+        settle({ state: 'SUCCESS' })
+      } else if (retryCount++ > 19) {
+        settle({
+          state: 'FAILURE',
+          message: 'Did not receive change confirmation'
+        })
       }
     }, 1000)
 
@@ -179,6 +227,32 @@ module.exports = function (app: any) {
   */
   plugin.start = function (options: any) {
     pluginOptions = options
+
+    // Listen for PGN 126208 Acknowledge responses from Maretron switch
+    // banks so pending PUT requests can confirm in <1s instead of waiting
+    // for the next 15s periodic status broadcast.
+    const onN2KIn = (pgn: any) => {
+      if (
+        !pgn ||
+        pgn.pgn !== 126208 ||
+        pgn.src === undefined ||
+        pgn.fields === undefined ||
+        pgn.fields.functionCode !== 'Acknowledge' ||
+        pgn.fields.pgn !== 127501
+      ) {
+        return
+      }
+      const waiters = pendingAcks.get(pgn.src)
+      if (!waiters || waiters.length === 0) return
+      // Maretron processes commands sequentially, so pair each ACK with
+      // the oldest pending waiter for this device rather than resolving
+      // all of them at once.
+      const waiter = waiters.shift()
+      if (waiters.length === 0) pendingAcks.delete(pgn.src)
+      if (waiter) waiter()
+    }
+    app.on('N2KAnalyzerOut', onN2KIn)
+    onStop.push(() => app.removeListener('N2KAnalyzerOut', onN2KIn))
 
     const command = {
       context: 'vessels.self',
@@ -242,6 +316,7 @@ module.exports = function (app: any) {
     onStop.forEach((f) => f())
     onStop = []
     registeredPaths = []
+    pendingAcks.clear()
   }
 
   return plugin
