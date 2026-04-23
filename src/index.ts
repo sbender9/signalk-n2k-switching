@@ -19,15 +19,24 @@ import {
   PGN_126208_NmeaCommandGroupFunction,
   convertCamelCase
 } from '@canboat/ts-pgns'
+import { CZoneEmulator, CZoneEmulatorOptions } from './czoneEmulator'
+import {
+  DEFAULT_DIPSWITCH_GROUP,
+  DEFAULT_INSTANCE,
+  INDICATOR_COUNT
+} from './czoneConstants'
 
 const PLUGIN_ID = 'signalk-n2k-switching'
 const PLUGIN_NAME = 'NMEA2000 Switching'
+const CZONE_EMULATED_ADDRESS_DEFAULT = 67
+const CZONE_UNIQUE_SERIAL_MAX = 0xfffff
 
 module.exports = function (app: any) {
   const plugin: any = {}
   let onStop: any[] = []
   let registeredPaths: string[] = []
   let pluginOptions: any
+  let czoneEmulator: CZoneEmulator | undefined
 
   // Waiters for PGN 126208 Acknowledge responses from Maretron-style switch
   // banks, keyed by device source address (dst of the original command).
@@ -46,6 +55,35 @@ module.exports = function (app: any) {
         title:
           'Maretron Compatibility (Sends command PGN 126208 to update switch status PGN 127501 in addition to the standard switch control PGN 127502)',
         default: false
+      },
+      czoneEmulation: {
+        type: 'object',
+        title:
+          'CZone emulation (publishes a virtual CZone switch panel to the bus)',
+        properties: {
+          enabled: { type: 'boolean', default: false },
+          dipswitchGroup: {
+            type: 'integer',
+            title: 'Dipswitch group',
+            default: DEFAULT_DIPSWITCH_GROUP,
+            minimum: 1,
+            maximum: 253
+          },
+          instance: {
+            type: 'integer',
+            title: 'Switch bank instance',
+            default: DEFAULT_INSTANCE,
+            minimum: 0,
+            maximum: 252
+          },
+          address: {
+            type: 'integer',
+            title: 'Emulated N2K source address',
+            default: CZONE_EMULATED_ADDRESS_DEFAULT,
+            minimum: 1,
+            maximum: 252
+          }
+        }
       }
     }
   }
@@ -228,6 +266,27 @@ module.exports = function (app: any) {
   plugin.start = function (options: any) {
     pluginOptions = options
 
+    if (options.czoneEmulation?.enabled) {
+      const emulationOpts: CZoneEmulatorOptions = {
+        enabled: true,
+        dipswitchGroup:
+          options.czoneEmulation.dipswitchGroup ?? DEFAULT_DIPSWITCH_GROUP,
+        instance: options.czoneEmulation.instance ?? DEFAULT_INSTANCE,
+        uniqueSerial:
+          options.czoneEmulation.uniqueSerial ??
+          deriveSerialFromApp(app, CZONE_UNIQUE_SERIAL_MAX)
+      }
+      const address =
+        options.czoneEmulation.address ?? CZONE_EMULATED_ADDRESS_DEFAULT
+      czoneEmulator = new CZoneEmulator(app, emulationOpts, address, PLUGIN_ID)
+      czoneEmulator.start()
+      registerCZonePutHandlers(app, czoneEmulator)
+      onStop.push(() => {
+        czoneEmulator?.stop()
+        czoneEmulator = undefined
+      })
+    }
+
     // Listen for PGN 126208 Acknowledge responses from Maretron switch
     // banks so pending PUT requests can confirm in <1s instead of waiting
     // for the next 15s periodic status broadcast.
@@ -320,4 +379,34 @@ module.exports = function (app: any) {
   }
 
   return plugin
+}
+
+function registerCZonePutHandlers(app: any, emulator: CZoneEmulator): void {
+  const instance = emulator.getInstance()
+  for (let i = 1; i <= INDICATOR_COUNT; i++) {
+    const path = `electrical.switches.bank.${instance}.${i}.state`
+    app.registerActionHandler(
+      'vessels.self',
+      path,
+      (_context: string, _path: string, value: any, cb: (r: any) => void) => {
+        const on = value === 1 || value === 'on' || value === true
+        emulator.setFromSignalK(i, on)
+        cb({ state: 'SUCCESS' })
+        return { state: 'COMPLETED', statusCode: 200 }
+      }
+    )
+  }
+}
+
+function deriveSerialFromApp(app: any, max: number): number {
+  const seed =
+    app?.selfId ??
+    app?.config?.settings?.vesselUuid ??
+    app?.config?.settings?.vesselMMSI ??
+    'signalk'
+  let h = 0
+  for (let i = 0; i < String(seed).length; i++) {
+    h = (h * 31 + String(seed).charCodeAt(i)) >>> 0
+  }
+  return h % (max + 1)
 }
