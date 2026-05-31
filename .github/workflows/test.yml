@@ -9,9 +9,19 @@ on:
   pull_request:
     branches: ['master']
 
+# Least-privilege default: this workflow only needs to read the repo.
+permissions:
+  contents: read
+
+# Cancel an in-progress run when a new commit is pushed to the same ref.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     strategy:
       matrix:
