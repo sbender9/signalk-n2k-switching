@@ -8,6 +8,11 @@ on:
     branches: ['master']
   pull_request:
     branches: ['master']
+  schedule:
+    # Run the full matrix weekly (Mondays 06:00 UTC) to catch breakage from
+    # transitive dependency drift even when there are no pushes.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
 
 jobs:
   build:
