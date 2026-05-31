@@ -24,6 +24,8 @@ jobs:
           npm run build
 
       - name: Publish
+        env:
+          tag: ${{ github.event.release.tag_name }}
         run: |
           if [[ "$tag" == *beta* ]];
             then
