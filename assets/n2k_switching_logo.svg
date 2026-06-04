@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  signalk-n2k-switching app icon.
+
+  Original artwork created for this plugin and released under the same MIT
+  license as the project (see LICENSE). No third-party assets are used.
+
+  Motif: a marine rocker switch (the plugin controls N2K switch banks) set on
+  a circular "bus" badge, with two NMEA 2000 backbone nodes wired to it.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="NMEA 2000 Switching">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1b6ec2"/>
+      <stop offset="1" stop-color="#0d3f73"/>
+    </linearGradient>
+    <linearGradient id="rocker" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#d7e4f2"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.38" r="0.65">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Rounded-square badge -->
+  <rect x="16" y="16" width="480" height="480" rx="104" fill="url(#bg)"/>
+  <rect x="16" y="16" width="480" height="480" rx="104" fill="url(#glow)"/>
+
+  <!-- NMEA 2000 backbone: a horizontal bus line with two drop nodes -->
+  <g stroke="#9ecbff" stroke-width="14" stroke-linecap="round" fill="none" opacity="0.9">
+    <line x1="92" y1="256" x2="170" y2="256"/>
+    <line x1="342" y1="256" x2="420" y2="256"/>
+  </g>
+  <g fill="#9ecbff">
+    <circle cx="92" cy="256" r="22"/>
+    <circle cx="420" cy="256" r="22"/>
+  </g>
+  <!-- inner contacts on the bus nodes -->
+  <g fill="#0d3f73">
+    <circle cx="92" cy="256" r="9"/>
+    <circle cx="420" cy="256" r="9"/>
+  </g>
+
+  <!-- Switch body -->
+  <rect x="168" y="150" width="176" height="212" rx="30" fill="#0b2f56"/>
+  <rect x="182" y="164" width="148" height="184" rx="22" fill="#103a68"/>
+
+  <!-- Rocker, tilted to the ON (up) position -->
+  <g transform="rotate(-12 256 256)">
+    <rect x="200" y="180" width="112" height="152" rx="20" fill="url(#rocker)"/>
+    <!-- ON marker (I) on the raised top half -->
+    <rect x="251" y="206" width="10" height="40" rx="5" fill="#1b6ec2"/>
+    <!-- OFF marker (O) on the lowered bottom half -->
+    <circle cx="256" cy="296" r="19" fill="none" stroke="#9fb6cf" stroke-width="9"/>
+    <!-- pivot highlight -->
+    <line x1="206" y1="256" x2="306" y2="256" stroke="#b9c9dc" stroke-width="3" opacity="0.7"/>
+  </g>
+</svg>

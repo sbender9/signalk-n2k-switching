@@ -3,6 +3,13 @@
   "version": "2.0.3",
   "description": "SignalK Plugin for N2K Switching",
   "main": "dist/index.js",
+  "files": [
+    "dist",
+    "assets"
+  ],
+  "signalk": {
+    "appIcon": "assets/n2k_switching_logo.png"
+  },
   "dependencies": {
     "@canboat/ts-pgns": "^1.7.1",
     "lodash": "^4.17.11"
